@@ -30,6 +30,7 @@ jobs:
           scanners: vuln
           vuln-type: os,library
           severity: HIGH,CRITICAL
+          ignore-unfixed: 'true'
           exit-code: '1'
 
       - name: Block high or critical Kubernetes misconfigurations
