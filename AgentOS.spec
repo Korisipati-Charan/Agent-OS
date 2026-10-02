@@ -1,18 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules
+import os
+from PyInstaller.utils.hooks import collect_submodules
 
 datas = [
     ('agentos/desktop/static', 'agentos/desktop/static'),
     ('agentos.yaml', '.'),
-    ('agentos/persona/SOUL.md', 'agentos/persona'),
 ]
 
-# Collect any package datas for rich and webview if present
-try:
-    datas += collect_data_files('webview')
-except Exception:
-    pass
+# Only include optional local persona markdown if present locally
+if os.path.isfile('agentos/persona/SOUL.md'):
+    datas.append(('agentos/persona/SOUL.md', 'agentos/persona'))
 
 hiddenimports = [
     'uvicorn',

@@ -6,7 +6,9 @@ Guarantees that safety-critical controls are never silently bypassed.
 Enforces task-boundary hot-patch activation (no in-place mutation of in-flight tasks).
 """
 
-from typing import Dict, Optional
+from __future__ import annotations
+
+from typing import Dict, List, Optional
 from pydantic import BaseModel
 from agentos.policy.audit_log import AuditLogger
 
