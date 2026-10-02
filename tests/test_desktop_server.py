@@ -201,3 +201,29 @@ def test_static_index_page_serving(tmp_path: Path) -> None:
     resp = client.get("/")
     assert resp.status_code == 200
     assert "AgentOS — Mission Control Studio" in resp.text
+
+
+def test_action_gate_pending_and_cancel_task(tmp_path: Path) -> None:
+    ws = tmp_path / "workspace"
+    ws.mkdir()
+    db = tmp_path / "test.db"
+    audit = tmp_path / "audit.jsonl"
+
+    runtime = build_runtime(workspace=str(ws), db_path=str(db), audit_path=str(audit))
+    app = create_desktop_app(runtime=runtime)
+    client = TestClient(app)
+
+    # 1. Pending approvals list starts empty
+    pending_resp = client.get("/api/action-gate/pending")
+    assert pending_resp.status_code == 200
+    assert pending_resp.json() == []
+
+    # 2. Submit task
+    submit_resp = client.post("/api/tasks", json={"goal": "Cancelable task"})
+    assert submit_resp.status_code == 200
+    task_id = submit_resp.json()["task_id"]
+
+    # 3. Cancel task
+    cancel_resp = client.post(f"/api/tasks/{task_id}/cancel")
+    assert cancel_resp.status_code == 200
+    assert cancel_resp.json()["status"] == "CANCELLED"

@@ -99,6 +99,9 @@
           msg.data.recent_logs.forEach(l => appendLogEntry(l));
         }
         setEmergencyState(msg.data.emergency_stop);
+        if (msg.data.pending_approvals && msg.data.pending_approvals.length > 0) {
+          showActionGate(msg.data.pending_approvals[0]);
+        }
         break;
 
       case "terminal_log":

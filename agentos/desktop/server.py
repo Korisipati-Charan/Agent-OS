@@ -89,6 +89,7 @@ def create_desktop_app(
 
     manager = ConnectionManager()
     pending_approvals: Dict[str, asyncio.Future[bool]] = {}
+    pending_approval_payloads: Dict[str, Dict[str, Any]] = {}
     active_tasks: Dict[str, Dict[str, Any]] = {}
     terminal_logs: List[Dict[str, Any]] = []
 
@@ -131,6 +132,7 @@ def create_desktop_app(
             "arguments": request.get("arguments", {}),
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
+        pending_approval_payloads[approval_id] = request_payload
 
         emit_log("ACTION_GATE", f"Action gate held for approval: {request_payload['tool_name']} ({approval_id})", "WARN")
         await manager.broadcast({"type": "action_gate_required", "data": request_payload})
@@ -146,6 +148,7 @@ def create_desktop_app(
             return False
         finally:
             pending_approvals.pop(approval_id, None)
+            pending_approval_payloads.pop(approval_id, None)
             await manager.broadcast({"type": "action_gate_resolved", "data": {"approval_id": approval_id}})
 
     def node_callback_sync(task_id: str, node: TaskNode) -> None:
@@ -304,6 +307,21 @@ def create_desktop_app(
             "decision": "APPROVED" if decision.approved else "REJECTED",
         }
 
+    @app.get("/api/action-gate/pending")
+    async def list_pending_approvals() -> List[Dict[str, Any]]:
+        return list(pending_approval_payloads.values())
+
+    @app.post("/api/tasks/{task_id}/cancel")
+    async def cancel_task(task_id: str) -> Dict[str, Any]:
+        task = active_tasks.get(task_id)
+        if not task:
+            raise HTTPException(status_code=404, detail="Task not active or already finished.")
+        task["status"] = "CANCELLED"
+        runtime.sqlite_store.save_task(task_id=task_id, goal=task.get("goal", ""), status="CANCELLED")
+        emit_log("ENGINE", f"Task {task_id} marked as CANCELLED by operator.", "WARN")
+        await manager.broadcast({"type": "task_finished", "data": task})
+        return {"task_id": task_id, "status": "CANCELLED"}
+
     @app.post("/api/supervisor/emergency-stop")
     async def trigger_emergency_stop() -> Dict[str, Any]:
         runtime.supervisor.emergency_stop()
@@ -345,15 +363,19 @@ def create_desktop_app(
         if not target.exists() or not target.is_file():
             raise HTTPException(status_code=404, detail="File does not exist.")
 
+        stat = target.stat()
         try:
-            content = target.read_text(encoding="utf-8", errors="replace")
-            return {
-                "path": path,
-                "size": len(content),
-                "content": content,
-            }
+            content = target.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            content = f"// [Binary file detected: {stat.st_size} bytes. Binary preview not supported in text viewer.]"
         except Exception as exc:
             raise HTTPException(status_code=500, detail=f"Failed to read file: {exc}")
+
+        return {
+            "path": path,
+            "size": stat.st_size,
+            "content": content,
+        }
 
     @app.get("/api/audit/logs")
     async def get_audit_trail(limit: int = Query(50, ge=1, le=200)) -> Dict[str, Any]:
@@ -388,6 +410,11 @@ def create_desktop_app(
     @app.websocket("/ws")
     async def websocket_telemetry(websocket: WebSocket) -> None:
         await manager.connect(websocket)
+        def _json_default(obj: Any) -> Any:
+            if isinstance(obj, set):
+                return list(obj)
+            return str(obj)
+
         # Send initial state snapshot on connect
         await websocket.send_text(json.dumps({
             "type": "init_state",
@@ -395,9 +422,9 @@ def create_desktop_app(
                 "tasks": runtime.sqlite_store.list_tasks(limit=10),
                 "recent_logs": terminal_logs[-50:],
                 "emergency_stop": runtime.supervisor.is_stopped(),
-                "pending_approvals": list(pending_approvals.keys()),
+                "pending_approvals": list(pending_approval_payloads.values()),
             }
-        }))
+        }, default=_json_default))
         try:
             while True:
                 msg = await websocket.receive_text()
