@@ -94,7 +94,11 @@ def create_desktop_app(
     terminal_logs: List[Dict[str, Any]] = []
 
     if static_dir is None:
-        static_dir = Path(__file__).resolve().parent / "static"
+        import sys
+        if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+            static_dir = Path(sys._MEIPASS) / "agentos" / "desktop" / "static"
+        else:
+            static_dir = Path(__file__).resolve().parent / "static"
     static_dir.mkdir(parents=True, exist_ok=True)
 
     def emit_log(channel: str, message: str, level: str = "INFO") -> None:

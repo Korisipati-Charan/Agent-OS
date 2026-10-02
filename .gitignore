@@ -4,6 +4,8 @@ __pycache__/
 *.pyc
 *.pyo
 .pytest_cache/
+build/
+dist/
 
 # Local databases and runtime outputs
 data/

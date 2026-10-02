@@ -139,6 +139,15 @@ def main() -> None:
         help="Authorized workspace directory for file tools",
     )
 
+    known_commands = {"run", "desktop", "app", "gui", "audit", "eval", "info", "serve"}
+    if len(sys.argv) == 1:
+        # User double-clicked executable or ran without CLI arguments:
+        # Default to launching the Mission Control Studio desktop app
+        sys.argv.append("desktop")
+    elif len(sys.argv) > 1 and sys.argv[1] not in known_commands and not sys.argv[1].startswith(("-h", "--help", "--config", "--workspace")):
+        # User passed desktop flags directly (e.g. AgentOS.exe --browser)
+        sys.argv.insert(1, "desktop")
+
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     p_run = subparsers.add_parser("run", help="Execute a goal through the cognitive engine")

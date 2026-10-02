@@ -156,7 +156,22 @@ Desktop skill packs (`C:\Users\charan\Desktop\Skills.md`) are installed under `.
 
 ## Quickstart
 
-### 1. Installation
+### 0. Standalone Windows Desktop Executable (`AgentOS.exe`)
+
+For a zero-dependency, zero-install operator experience on Windows 11:
+- **Run Directly**: Double-click `dist\AgentOS.exe` or execute [`start_desktop.bat`](start_desktop.bat).
+  - Double-clicking launches the native **Mission Control Studio** desktop application without requiring a pre-installed Python interpreter or build toolchains.
+  - Supports all CLI subcommands and flags out-of-the-box:
+    ```cmd
+    dist\AgentOS.exe                       :: Launches Mission Control Studio GUI
+    dist\AgentOS.exe --browser             :: Launches Studio in default browser
+    dist\AgentOS.exe run "Analyze files"   :: Executes autonomous goal in CLI
+    dist\AgentOS.exe info                  :: Inspects platform supervisor boundaries
+    dist\AgentOS.exe audit verify          :: Cryptographically validates SHA-256 ledger
+    ```
+- **Zero-Error Rebuild**: Run [`build_exe.bat`](build_exe.bat) to reproducibly package `AgentOS.exe` from source with all assets and specs bundled.
+
+### 1. Installation from Source
 
 Requires Python 3.11+.
 

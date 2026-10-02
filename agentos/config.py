@@ -90,9 +90,17 @@ class AgentOSConfig(BaseModel):
 
     @classmethod
     def from_yaml(cls, path: str | Path = "agentos.yaml") -> "AgentOSConfig":
+        import sys
         file_path = Path(path)
         if not file_path.exists():
-            raise FileNotFoundError(f"Configuration file not found: {file_path}")
+            if getattr(sys, "frozen", False) and hasattr(sys, "_MEIPASS"):
+                bundled_path = Path(sys._MEIPASS) / path
+                if bundled_path.exists():
+                    file_path = bundled_path
+                else:
+                    raise FileNotFoundError(f"Configuration file not found: {file_path}")
+            else:
+                raise FileNotFoundError(f"Configuration file not found: {file_path}")
         with open(file_path, "r", encoding="utf-8") as f:
             data = yaml.safe_load(f)
         return cls.model_validate(data)
