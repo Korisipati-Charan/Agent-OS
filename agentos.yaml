@@ -1,0 +1,102 @@
+# AgentOS Policy-as-Code Configuration (v3.0.1 Specification)
+version: "3.0.1"
+
+system:
+  environment: "development" # development | staging | production
+  supervisor:
+    heartbeat_interval_sec: 2
+    watchdog_timeout_sec: 15
+    platform_mode: "auto" # auto | linux_seccomp | windows_host_vm
+  sandbox:
+    tier: "rootless_docker" # rootless_docker | gvisor | local_process
+    image: "python:3.11-slim"
+    max_memory_mb: 2048
+    max_cpu_cores: 2.0
+    max_pids: 100
+    read_only_root: true
+    workspace_mount: "/workspace"
+
+quotas:
+  spend_limits:
+    per_task_usd: 2.50
+    daily_usd: 25.00
+    per_task_tokens: 150000
+    daily_tokens: 1500000
+    auto_downgrade_threshold_pct: 80
+    halt_on_limit: true
+
+model_routing:
+  default_provider: "litellm"
+  tiers:
+    tier1_fast:
+      model: "ollama/llama3.1:8b-instruct"
+      api_base: "http://localhost:11434"
+      fallback: "gpt-4o-mini"
+      purpose: "RTX 5060 local parsing, summaries, extraction, AST checks (0 token cost)"
+      max_tokens: 1024
+      temperature: 0.1
+    tier2_reasoning:
+      model: "gpt-4o"
+      fallback: "claude-3-5-sonnet"
+      purpose: "Frontier reasoning, planning, high-risk validation, goal compilation"
+      max_tokens: 4096
+      temperature: 0.2
+
+egress_allowlist:
+  enforce_proxy: true
+  allowed_domains:
+    - "api.openai.com"
+    - "api.anthropic.com"
+    - "api.github.com"
+    - "pypi.org"
+    - "files.pythonhosted.org"
+    - "registry.npmjs.org"
+  blocked_ip_ranges:
+    - "10.0.0.0/8"
+    - "172.16.0.0/12"
+    - "192.168.0.0/16"
+    - "169.254.169.254/32" # Cloud metadata endpoint protection
+
+write_scopes:
+  default_mode: "read_only"
+  allowed_workspaces:
+    - "./workspace"
+    - "/workspace"
+  protected_paths:
+    - "./agentos.yaml"
+    - "./Rules.MD"
+    - "./policy"
+    - "./supervisor"
+    - "/etc"
+    - "/sys"
+    - "/proc"
+
+capability_tiers:
+  read_only:
+    - "file_read"
+    - "code_search"
+    - "web_scrape"
+    - "sqlite_query"
+  workspace_write:
+    - "file_write"
+    - "patch_apply"
+    - "shell_exec_workspace"
+  consequential:
+    - "host_write"
+    - "destructive_delete"
+    - "payment_charge"
+    - "external_send"
+    - "git_push_main"
+
+approval_rules:
+  require_human_approval_for:
+    - "consequential"
+    - "spend_exceeded_warning"
+    - "sandbox_escape_detected"
+    - "quarantine_override"
+  approval_timeout_sec: 300
+
+idempotency:
+  require_idempotency_keys_for_mutations: true
+  checkpoint_before_retryable_action: true
+  deduplication_ttl_sec: 86400

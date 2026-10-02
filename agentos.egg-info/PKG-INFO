@@ -1,0 +1,221 @@
+Metadata-Version: 2.4
+Name: agentos
+Version: 3.0.1
+Summary: AgentOS: Supervisor + Cognitive Engine for Autonomous Agent Workloads
+Author: AgentOS Core Team
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: Topic :: Scientific/Engineering :: Artificial Intelligence
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Programming Language :: Python :: 3.14
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+Requires-Dist: pydantic>=2.7.0
+Requires-Dist: pyyaml>=6.0.1
+Requires-Dist: rich>=13.7.0
+Provides-Extra: full
+Requires-Dist: litellm>=1.40.0; extra == "full"
+Requires-Dist: playwright>=1.45.0; extra == "full"
+Requires-Dist: docker>=7.1.0; extra == "full"
+Requires-Dist: opentelemetry-api>=1.25.0; extra == "full"
+Requires-Dist: opentelemetry-sdk>=1.25.0; extra == "full"
+Requires-Dist: fastapi>=0.111.0; extra == "full"
+Requires-Dist: uvicorn>=0.30.0; extra == "full"
+Provides-Extra: dev
+Requires-Dist: pytest>=8.2.0; extra == "dev"
+Requires-Dist: pytest-asyncio>=0.23.0; extra == "dev"
+Requires-Dist: ruff>=0.5.0; extra == "dev"
+Requires-Dist: mypy>=1.10.0; extra == "dev"
+
+# AgentOS
+
+**Supervisor + Cognitive Engine: Production-Ready Architecture for Autonomous Agent Workloads**
+
+AgentOS is a single-node autonomous agent operating system designed to run on Windows 11 (WSL2) and Linux. It pairs a privileged userspace Safety Supervisor with an event-driven Cognitive Engine to execute complex multi-step task graphs with strict deterministic safety guarantees.
+
+---
+
+## Core Invariants
+
+AgentOS is built upon nine non-negotiable operational invariants:
+
+1. **Authorize Before Side Effect**: Every state-changing or external action is evaluated by the preflight Action Gate (verifying capabilities, write scopes, egress destinations, spend quotas, and human approval) before execution.
+2. **Verify After Side Effect**: The Postcondition Gate validates tool outputs and environmental state changes before dependent state is committed.
+3. **Checkpoint Before Retry**: Task states are saved into durable SQLite WAL checkpoints before any retryable or mutating action; external actions enforce idempotency keys to eliminate duplicate side effects.
+4. **Deterministic Replay Realism**: Replays record model outputs, tool responses, random seeds, and environment metadata. External side effects are stubbed or reconciled rather than blindly re-executed.
+5. **Hot-Patching at Task Boundaries**: Loaded code is never mutated in-place. Tool updates and patches are activated exclusively between task boundaries.
+6. **Platform Enforcement Realism**: Distinguishes Linux mechanisms (`seccomp`, `cgroups v2`) from Windows host/VM container boundaries.
+7. **Zero-Secret Model Context**: Secrets are injected only at the Egress Proxy and scrubbed from all logs and context windows.
+8. **Read-Only by Default**: Agents write exclusively to designated, resolved workspace directories. Host writes, destructive deletes, and external transmissions require human authorization.
+9. **Fail-Closed Auto-Quarantine**: Tool regressions trigger automated quarantine with fallback versions. Safety-critical controls fail closed rather than silently bypassing security.
+
+---
+
+## Architecture Overview
+
+```
+                                +---------------------------+
+                                |     Safety Supervisor     |
+                                | (Watchdog, Emergency Stop)|
+                                +-------------+-------------+
+                                              | Heartbeat / Supervision
+                                              v
++-------------+      Goal       +---------------------------+     Action Gate     +------------------------+
+| User / CLI  +---------------->|     Cognitive Engine      +-------------------->| Action Space / Sandbox |
++-------------+                 |  (DAG Planner & Governor) |  (Preflight Check)  |  (Docker / PTY / Work) |
+                                +-------------+-------------+                     +-----------+------------+
+                                              |                                               | Output
+                                              | Commit / Checkpoint                           v
+                                              v                                   +------------------------+
+                                +---------------------------+                     |   Postcondition Gate   |
+                                |    Durable Memory Store   |<--------------------+  (Verify & Sanitize)   |
+                                | (SQLite WAL / Audit Hash) |    State Verified   +------------------------+
+                                +---------------------------+
+```
+
+---
+
+## Directory Structure
+
+```
+├── agentos.yaml                  # Policy-as-Code configuration
+├── pyproject.toml                # Project metadata and dependencies
+├── Dockerfile                    # Multi-stage hardened runner (UID 10001)
+├── docker-compose.yml            # Local rootless container orchestration
+├── AGENTOS_SPEC_REVIEW_FOR_CHATGPT.md # Full peer review dossier for ChatGPT
+├── k8s/                          # Production Kubernetes manifests
+│   ├── namespace.yaml
+│   ├── pvc.yaml
+│   ├── deployment.yaml           # Read-only rootfs, non-root, drop ALL caps
+│   ├── service.yaml              # ClusterIP on probe port 8000
+│   ├── network-policy.yaml       # Default-deny egress network policy
+│   └── hpa.yaml                  # Horizontal Pod Autoscaler
+├── agentos/
+│   ├── core/                     # Supervisor and Cognitive Engine
+│   ├── cognitive/                # Task DAG, Planner, Action Gate, Postcondition Gate
+│   ├── cost_governor/            # LiteLLM routing, spend tracker, prompt cache
+│   ├── action_space/             # Sandboxes (Docker, Local), PTY Shell, Browser, Code Editor
+│   ├── memory/                   # SQLite WAL store, working memory, procedural memory
+│   ├── policy/                   # Policy engine, egress proxy, SHA-256 audit log, injection defense
+│   ├── evolution/                # Quarantine manager, self-patching guard
+│   └── evals/                    # Golden tasks, trace replay, red-team suite
+└── tests/                        # Pytest suite
+```
+
+---
+
+## Quickstart
+
+### 1. Installation
+
+Requires Python 3.11+.
+
+```bash
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .\.venv\Scripts\activate
+
+# Install dependencies
+pip install -e .
+```
+
+### 2. Verify Platform Boundaries
+
+Inspect the platform supervisor and available isolation mechanisms:
+
+```bash
+agentos info
+```
+
+### 3. Run a Task
+
+Execute an autonomous goal through the Cognitive Engine:
+
+```bash
+agentos run "Analyze workspace files and compile status report"
+```
+
+### 4. Verify Cryptographic Audit Trail
+
+AgentOS maintains an append-only, SHA-256 hash-chained audit ledger. Verify integrity at any time:
+
+```bash
+agentos audit verify
+```
+
+### 5. Run Evaluations & Red-Team Security Tests
+
+```bash
+agentos eval
+```
+
+### 6. HTTP Probes (Docker / Kubernetes)
+
+Start the liveness and readiness server on port 8000:
+
+```bash
+agentos serve --host 0.0.0.0 --port 8000
+```
+
+Endpoints: `/healthz` (process alive), `/ready` (supervisor + storage reachable).
+
+---
+
+## Policy as Code (`agentos.yaml`)
+
+System quotas, model routing, egress allowlists, and write permissions are declared declaratively:
+
+```yaml
+version: "3.0.1"
+system:
+  supervisor:
+    heartbeat_interval_sec: 2
+    watchdog_timeout_sec: 15
+  sandbox:
+    tier: "rootless_docker"
+    max_memory_mb: 2048
+    max_cpu_cores: 2.0
+    read_only_root: true
+
+quotas:
+  spend_limits:
+    per_task_usd: 2.50
+    daily_usd: 25.00
+    halt_on_limit: true
+
+model_routing:
+  tiers:
+    tier1_fast:
+      model: "gpt-4o-mini"
+    tier2_reasoning:
+      model: "gpt-4o"
+```
+
+---
+
+## Hardware Acceleration & Local Inference
+
+When running on workstations equipped with dedicated GPUs (e.g., NVIDIA GeForce RTX with 8GB+ VRAM), Tier 1 tasks (parsing, JSON validation, AST checks, turn summaries) can be routed to a local model (via Ollama or llama.cpp) to achieve sub-200ms latency with zero API egress cost.
+
+---
+
+## External Review with ChatGPT
+
+A dedicated, comprehensive peer-review dossier has been prepared in:
+`AGENTOS_SPEC_REVIEW_FOR_CHATGPT.md`
+
+To have ChatGPT audit this architecture, open the review dossier and copy the Master Audit Prompt into ChatGPT. It provides full context, code mappings, logic proofs, and specific audit questions covering distributed race conditions, DNS rebinding, and crash recovery.
+
+---
+
+## Testing
+
+Run the test suite:
+
+```bash
+pytest -v
+```
+
+All core invariants are validated with automated unit tests.

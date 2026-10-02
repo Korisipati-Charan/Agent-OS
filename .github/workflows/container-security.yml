@@ -1,0 +1,43 @@
+name: Container security
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    name: Build and scan
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v5.1.0
+        with:
+          persist-credentials: false
+
+      - name: Build image for this commit
+        run: docker build --pull --tag agentos:${{ github.sha }} .
+
+      - name: Block images with high or critical vulnerabilities
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: agentos:${{ github.sha }}
+          format: table
+          scanners: vuln
+          vuln-type: os,library
+          severity: HIGH,CRITICAL
+          exit-code: '1'
+
+      - name: Block high or critical Kubernetes misconfigurations
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          scan-type: config
+          scan-ref: k8s
+          format: table
+          scanners: misconfig
+          severity: HIGH,CRITICAL
+          exit-code: '1'

@@ -1,0 +1,19 @@
+# Virtual environment & Python cache
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Local databases and runtime outputs
+data/
+workspace/
+logs/
+.skills_extracted/
+*.bak
+
+# Markdown commit restriction per project rules:
+# "Don't commit any MD files other than README.md"
+*.md
+*.MD
+!README.md

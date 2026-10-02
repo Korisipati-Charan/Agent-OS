@@ -1,0 +1,38 @@
+version: "3.8"
+
+services:
+  agentos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: agentos_supervisor
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp:size=128M,exec
+    environment:
+      - AGENTOS_ENV=development
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./data:/app/data:rw
+      - ./workspace:/app/workspace:rw
+      - ./agentos.yaml:/app/agentos.yaml:ro
+    command: ["serve", "--host", "0.0.0.0", "--port", "8000"]
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 4096M
+        reservations:
+          cpus: "0.5"
+          memory: 1024M

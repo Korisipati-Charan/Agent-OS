@@ -1,0 +1,62 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentos"
+version = "3.0.1"
+description = "AgentOS: Supervisor + Cognitive Engine for Autonomous Agent Workloads"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    { name = "AgentOS Core Team" }
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+
+dependencies = [
+    "pydantic>=2.7.0",
+    "pyyaml>=6.0.1",
+    "rich>=13.7.0",
+]
+
+[project.optional-dependencies]
+full = [
+    "litellm>=1.40.0",
+    "playwright>=1.45.0",
+    "docker>=7.1.0",
+    "opentelemetry-api>=1.25.0",
+    "opentelemetry-sdk>=1.25.0",
+    "fastapi>=0.111.0",
+    "uvicorn>=0.30.0",
+]
+dev = [
+    "pytest>=8.2.0",
+    "pytest-asyncio>=0.23.0",
+    "ruff>=0.5.0",
+    "mypy>=1.10.0",
+]
+
+[project.scripts]
+agentos = "agentos.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["agentos*"]
+exclude = ["tests*", "k8s*", "data*", "workspace*"]
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
