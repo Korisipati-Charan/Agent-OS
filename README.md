@@ -131,7 +131,19 @@ Inspect the platform supervisor and available isolation mechanisms:
 agentos info
 ```
 
-### 3. Run a Task
+### 3. Launch Mission Control Desktop Application
+
+Launch the hardware-accelerated Operator Studio desktop interface (powered by PyWebView & Microsoft Edge WebView2 with live DAG telemetry, real-time Action Gate intervention drawer, and hardware/spend HUD meters):
+
+```bash
+agentos desktop
+# Or launch directly with the root script:
+python run_desktop.py
+# Or run in browser mode:
+agentos desktop --browser
+```
+
+### 4. Run a Task via CLI
 
 Execute an autonomous goal through the Cognitive Engine:
 

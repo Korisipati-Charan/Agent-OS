@@ -48,7 +48,8 @@ class CognitiveEngine:
         self,
         goal: str,
         planned_steps: List[Dict[str, Any]],
-        approval_callback: Optional[Callable[[Dict[str, str]], bool]] = None,
+        approval_callback: Optional[Callable[[Dict[str, Any]], bool]] = None,
+        node_callback: Optional[Callable[[str, TaskNode], None]] = None,
     ) -> Dict[str, Any]:
         """
         Executes a planned goal adhering strictly to all v3.0.1 logic invariants:
@@ -72,6 +73,13 @@ class CognitiveEngine:
             payload={"task_id": dag.task_id, "goal": goal, "node_count": len(dag.nodes)},
         )
 
+        def _notify_node(target_node: TaskNode) -> None:
+            if node_callback is not None:
+                try:
+                    node_callback(dag.task_id, target_node)
+                except Exception:
+                    pass
+
         while not dag.is_finished():
             if self.supervisor.is_stopped():
                 break
@@ -85,6 +93,7 @@ class CognitiveEngine:
 
             for node in ready_nodes:
                 node.status = TaskStatus.RUNNING
+                _notify_node(node)
 
                 # 2. Checkpoint state BEFORE mutating action
                 if node.requires_checkpoint:
@@ -111,10 +120,13 @@ class CognitiveEngine:
                 if auth.approval_can_proceed and approval_callback is not None:
                     approved = approval_callback(
                         {
+                            "task_id": dag.task_id,
+                            "node_id": node.node_id,
                             "tool_name": node.tool_name,
                             "description": node.description,
                             "reason": auth.reason,
                             "ethical_concern": node.ethical_concern or "",
+                            "arguments": node.arguments,
                         }
                     )
                     if approved:
@@ -144,11 +156,13 @@ class CognitiveEngine:
                             node.node_id,
                             error=f"Preflight authorization denied: {auth.reason}",
                         )
+                    _notify_node(node)
                     continue
 
                 # 4. Idempotency Cache Short-Circuit
                 if auth.cached_result:
                     dag.mark_completed(node.node_id, result=auth.cached_result)
+                    _notify_node(node)
                     continue
 
                 # 5. Tool Execution inside Sandbox
@@ -159,6 +173,7 @@ class CognitiveEngine:
                         node.node_id,
                         error=f"Tool execution raised {type(exc).__name__}.",
                     )
+                    _notify_node(node)
                     continue
 
                 if not tool_result.success:
@@ -166,6 +181,7 @@ class CognitiveEngine:
                         node.node_id,
                         error=tool_result.error or "Tool execution failed",
                     )
+                    _notify_node(node)
                     continue
 
                 # 6. Postcondition Verification (Postcondition Gate)
@@ -183,6 +199,7 @@ class CognitiveEngine:
                         node.node_id,
                         error=f"Postcondition verification failed: {verification.reasons}",
                     )
+                    _notify_node(node)
                     continue
 
                 # 7. Commit State and Idempotency Key
@@ -193,6 +210,7 @@ class CognitiveEngine:
                     )
 
                 dag.mark_completed(node.node_id, result=verification.sanitized_output)
+                _notify_node(node)
 
         all_steps_completed = all(
             node.status == TaskStatus.COMPLETED for node in dag.nodes.values()

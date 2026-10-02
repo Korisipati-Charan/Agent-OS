@@ -26,6 +26,7 @@ class CostGovernor:
         if user_notes:
             persona = f"{persona}\n\nUSER CONTEXT:\n{user_notes}"
 
+        self.spend_tracker = spend_tracker
         self.router = ModelRouter(config, spend_tracker)
         self.prompt_cache = PromptCacheOptimizer(system_persona=persona)
         self.semantic_cache = SemanticCache(sqlite_store)

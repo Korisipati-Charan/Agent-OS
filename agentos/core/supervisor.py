@@ -173,6 +173,17 @@ class SafetySupervisor:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
+    def emergency_stop(
+        self, reason: str = "User triggered emergency stop"
+    ) -> Dict[str, Any]:
+        """Convenience alias for trigger_emergency_stop."""
+        return self.trigger_emergency_stop(reason)
+
+    def resume(self) -> None:
+        """Restores normal supervisor operation after emergency stop."""
+        with self._lock:
+            self._emergency_stop_triggered = False
+
     def is_stopped(self) -> bool:
         with self._lock:
             return self._emergency_stop_triggered

@@ -253,3 +253,17 @@ class SQLiteStore:
                 ALTER TABLE {shadow_table} RENAME TO {live_table};
                 COMMIT;
             """)
+
+    def list_tasks(self, limit: int = 50) -> List[Dict[str, Any]]:
+        """Retrieve recent task executions ordered by last update."""
+        with self._get_connection() as conn:
+            cur = conn.execute(
+                """
+                SELECT task_id, goal, status, created_at, updated_at
+                FROM tasks
+                ORDER BY updated_at DESC
+                LIMIT ?
+                """,
+                (limit,),
+            )
+            return [dict(row) for row in cur.fetchall()]

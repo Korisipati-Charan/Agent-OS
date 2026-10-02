@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AgentOS — Mission Control Studio</title>
+  <link rel="stylesheet" href="/static/app.css" />
+</head>
+<body class="theme-cyber-studio">
+  <div id="app" class="studio-layout">
+    <!-- Top Global Header / HUD -->
+    <header class="studio-header">
+      <div class="header-branding">
+        <div class="logo-shield">
+          <span class="logo-icon">⬢</span>
+          <span class="logo-text">AGENT<strong>OS</strong></span>
+          <span class="version-tag">v3.0.1</span>
+        </div>
+        <div class="supervisor-status">
+          <span id="supervisor-beacon" class="status-dot dot-active"></span>
+          <span id="supervisor-label" class="status-label">SUPERVISOR ARMED // WIN11-WSL2</span>
+        </div>
+      </div>
+
+      <!-- Telemetry Meters (RTX 5060 + Spend + KV Cache) -->
+      <div class="telemetry-bar">
+        <div class="telemetry-pill" title="Local Tier-1 Acceleration">
+          <span class="pill-label">GPU</span>
+          <span class="pill-value text-cyan" id="gpu-telemetry">RTX 5060 (8GB)</span>
+          <span class="pill-sub">28% VRAM</span>
+        </div>
+        <div class="telemetry-pill" title="Prompt Cache KV Optimization">
+          <span class="pill-label">KV CACHE</span>
+          <span class="pill-value text-green" id="cache-telemetry">86.4%</span>
+          <span class="pill-sub">HIT RATE</span>
+        </div>
+        <div class="telemetry-pill" title="Cost Governor Spend Tracker">
+          <span class="pill-label">SPEND</span>
+          <span class="pill-value text-amber" id="spend-telemetry">$0.000</span>
+          <span class="pill-sub">/ $10.00</span>
+        </div>
+        <div class="telemetry-pill" title="Response Latency">
+          <span class="pill-label">LATENCY</span>
+          <span class="pill-value text-purple" id="latency-telemetry">14ms</span>
+          <span class="pill-sub">DOHERTY</span>
+        </div>
+      </div>
+
+      <!-- Header Controls -->
+      <div class="header-actions">
+        <button id="btn-evals" class="btn btn-secondary btn-sm" title="Run Golden Benchmark Suite">
+          <span>⚡</span> Golden Evals
+        </button>
+        <button id="btn-emergency-stop" class="btn btn-danger btn-sm" title="Halt all agent tasks immediately">
+          <span>🛑</span> EMERGENCY STOP
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Workspace Multi-Pane Area -->
+    <main class="studio-main">
+      <!-- Left Rail: Workspace Files & Task History -->
+      <aside class="left-rail">
+        <div class="rail-section">
+          <div class="section-title">
+            <span>WORKSPACE REPO (./workspace)</span>
+            <button id="btn-refresh-files" class="icon-btn" title="Refresh files">↻</button>
+          </div>
+          <div id="workspace-tree" class="file-tree-container">
+            <div class="tree-empty">Scanning workspace directory…</div>
+          </div>
+        </div>
+
+        <div class="rail-section rail-tasks">
+          <div class="section-title">
+            <span>SESSION TASK HISTORY</span>
+          </div>
+          <div id="task-history-list" class="task-history-container">
+            <div class="tree-empty">No previous task records found.</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Stage: Goal Prompt + DAG Visualizer + Split Drawer -->
+      <section class="center-stage">
+        <!-- Goal Command Input Bar -->
+        <div class="goal-command-bar">
+          <div class="input-wrapper">
+            <span class="input-prefix">▶</span>
+            <input
+              type="text"
+              id="goal-input"
+              class="goal-input"
+              placeholder="Enter operator objective or autonomous task goal... (e.g. Generate security report and audit workspace)"
+              autocomplete="off"
+            />
+          </div>
+          <button id="btn-launch-task" class="btn btn-primary">
+            <span>RUN GOAL</span>
+            <kbd>⏎</kbd>
+          </button>
+        </div>
+
+        <!-- Interactive Task DAG Canvas -->
+        <div class="dag-panel">
+          <div class="dag-header">
+            <div class="dag-title-group">
+              <span class="section-badge">DAG EXECUTION GRAPH</span>
+              <span id="active-task-goal" class="active-goal-text">No active task execution.</span>
+            </div>
+            <div class="dag-legend">
+              <span class="legend-item"><span class="legend-dot status-pending"></span> Pending</span>
+              <span class="legend-item"><span class="legend-dot status-running"></span> Running</span>
+              <span class="legend-item"><span class="legend-dot status-completed"></span> Completed</span>
+              <span class="legend-item"><span class="legend-dot status-gated"></span> Action Gate</span>
+              <span class="legend-item"><span class="legend-dot status-failed"></span> Failed</span>
+            </div>
+          </div>
+
+          <div id="dag-canvas-container" class="dag-canvas-container">
+            <div id="dag-empty-placeholder" class="dag-empty">
+              <div class="empty-icon">⬡</div>
+              <div class="empty-title">Kahn's Topological DAG Canvas</div>
+              <div class="empty-desc">Submit a goal above or select a past task to visualize preflight authorization nodes and dependency execution flow.</div>
+            </div>
+            <div id="dag-graph" class="dag-graph" style="display: none;"></div>
+          </div>
+        </div>
+
+        <!-- Center Bottom: Tabbed Multi-Pane Drawer -->
+        <div class="bottom-drawer">
+          <div class="drawer-tabs">
+            <button class="drawer-tab active" data-tab="terminal">
+              <span class="tab-icon">⌨</span> Live Streaming Terminal
+            </button>
+            <button class="drawer-tab" data-tab="diff">
+              <span class="tab-icon">📄</span> Workspace File & Diff Viewer
+            </button>
+            <button class="drawer-tab" data-tab="audit">
+              <span class="tab-icon">🔒</span> Cryptographic Audit Trail
+            </button>
+            <div class="drawer-controls">
+              <button id="btn-clear-logs" class="icon-btn" title="Clear terminal logs">🗑</button>
+            </div>
+          </div>
+
+          <div class="drawer-content">
+            <!-- Tab 1: Terminal Log Stream -->
+            <div id="tab-terminal" class="tab-pane active">
+              <div id="terminal-stream" class="terminal-stream">
+                <div class="terminal-line system-line">[SYSTEM] AgentOS Mission Control Studio initialized. Connected to local runtime engine.</div>
+              </div>
+            </div>
+
+            <!-- Tab 2: File & Diff Viewer -->
+            <div id="tab-diff" class="tab-pane">
+              <div class="diff-viewer-wrapper">
+                <div class="diff-header">
+                  <span id="diff-filename" class="diff-filename">Select a file from the workspace tree on the left to inspect</span>
+                  <span id="diff-filesize" class="diff-filesize"></span>
+                </div>
+                <pre id="diff-content" class="diff-code"><code>// File content will appear here when selected.</code></pre>
+              </div>
+            </div>
+
+            <!-- Tab 3: Audit Trail -->
+            <div id="tab-audit" class="tab-pane">
+              <div class="audit-wrapper">
+                <div class="audit-status-bar">
+                  <span id="audit-integrity-badge" class="badge badge-success">✓ SHA-256 HASH CHAIN VERIFIED</span>
+                  <span id="audit-record-count" class="text-dim">0 records</span>
+                </div>
+                <div class="audit-table-wrapper">
+                  <table class="audit-table">
+                    <thead>
+                      <tr>
+                        <th>Timestamp</th>
+                        <th>Action</th>
+                        <th>Actor</th>
+                        <th>Previous Hash</th>
+                        <th>Record Hash</th>
+                      </tr>
+                    </thead>
+                    <tbody id="audit-table-body">
+                      <tr><td colspan="5" class="text-center text-dim">No audit records loaded.</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Drawer: Action Gate Intervention Slide-over -->
+      <aside id="action-gate-drawer" class="action-gate-drawer">
+        <div class="gate-header">
+          <div class="gate-alert-pill">
+            <span class="pulse-ring"></span>
+            <span>ACTION GATE INTERVENTION</span>
+          </div>
+          <span class="gate-risk-badge" id="gate-risk-badge">HIGH RISK</span>
+        </div>
+
+        <div class="gate-body">
+          <div class="gate-field">
+            <label>TARGET TOOL</label>
+            <div id="gate-tool-name" class="field-value font-mono">file_write</div>
+          </div>
+          <div class="gate-field">
+            <label>OBJECTIVE / DESCRIPTION</label>
+            <div id="gate-description" class="field-value">Write execution summary to workspace</div>
+          </div>
+          <div class="gate-field">
+            <label>PREFLIGHT POLICY EVALUATION</label>
+            <div id="gate-reason" class="field-value text-amber">Consequential state modification requires human operator sign-off.</div>
+          </div>
+          <div class="gate-field" id="gate-ethical-container" style="display: none;">
+            <label>ETHICAL / SAFETY ADVISORY</label>
+            <div id="gate-ethical" class="field-value text-rose"></div>
+          </div>
+          <div class="gate-field">
+            <label>ARGUMENTS PAYLOAD</label>
+            <pre id="gate-arguments" class="field-code"></pre>
+          </div>
+          <div class="gate-telemetry-row">
+            <div>
+              <span class="dim">IDEMPOTENCY:</span>
+              <span id="gate-idempotency" class="font-mono text-cyan">idemp_89f02</span>
+            </div>
+            <div>
+              <span class="dim">EST. SPEND:</span>
+              <span class="text-green">$0.0000</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="gate-actions">
+          <button id="btn-gate-approve" class="btn btn-success btn-lg">
+            <span>✓ AUTHORIZE EXECUTION</span>
+            <kbd>Y</kbd>
+          </button>
+          <button id="btn-gate-reject" class="btn btn-outline-danger btn-lg">
+            <span>✗ REJECT & QUARANTINE</span>
+            <kbd>N</kbd>
+          </button>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Emergency Stop Banner Overlay -->
+    <div id="emergency-overlay" class="emergency-overlay" style="display: none;">
+      <div class="emergency-dialog">
+        <div class="dialog-icon">🛑</div>
+        <h2>SUPERVISOR EMERGENCY STOP ARMED</h2>
+        <p>All child sandboxes have been quarantined and mutating operations are frozen. Egress proxy credentials have been revoked.</p>
+        <button id="btn-resume-supervisor" class="btn btn-primary btn-lg">
+          RESUME NORMAL OPERATION
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

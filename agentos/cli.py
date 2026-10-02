@@ -118,6 +118,18 @@ def cmd_serve(args: argparse.Namespace) -> None:
         console.print("\n[dim]Server stopped.[/dim]")
 
 
+def cmd_desktop(args: argparse.Namespace) -> None:
+    from agentos.desktop.app import run_desktop_app
+
+    run_desktop_app(
+        config_path=args.config,
+        workspace=args.workspace,
+        port=args.port,
+        browser_mode=args.browser,
+        debug=args.debug,
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="AgentOS CLI (v3.0.1)")
     parser.add_argument("--config", default="agentos.yaml", help="Path to agentos.yaml")
@@ -132,6 +144,20 @@ def main() -> None:
     p_run = subparsers.add_parser("run", help="Execute a goal through the cognitive engine")
     p_run.add_argument("goal", help="High-level goal description")
     p_run.set_defaults(func=cmd_run)
+
+    p_desktop = subparsers.add_parser(
+        "desktop",
+        aliases=["app", "gui"],
+        help="Launch AgentOS Mission Control Desktop Application",
+    )
+    p_desktop.add_argument("--port", type=int, default=None, help="Port to bind (default: 18991)")
+    p_desktop.add_argument(
+        "--browser",
+        action="store_true",
+        help="Launch in system browser instead of native desktop window",
+    )
+    p_desktop.add_argument("--debug", action="store_true", help="Enable verbose debug logs")
+    p_desktop.set_defaults(func=cmd_desktop)
 
     p_audit = subparsers.add_parser("audit", help="Audit log operations")
     p_audit_sub = p_audit.add_subparsers(dest="audit_cmd", required=True)
