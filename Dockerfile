@@ -1,9 +1,10 @@
 # Multi-stage security-hardened Dockerfile for AgentOS
-FROM python:3.11-slim AS builder
+FROM python:3.11-slim-bookworm AS builder
 
 WORKDIR /build
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && apt-get install -y --no-install-recommends \
+        build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
@@ -11,11 +12,13 @@ RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
     && pip install --no-cache-dir .
 
 # Production Runner Stage
-FROM python:3.11-slim AS runner
+FROM python:3.11-slim-bookworm AS runner
 
 # Security: Non-root user with explicit UID/GID
-RUN groupadd -g 10001 agentos && \
-    useradd -u 10001 -g agentos -s /bin/bash -m agentos
+RUN apt-get update && apt-get upgrade -y --no-install-recommends \
+    && groupadd -g 10001 agentos \
+    && useradd -u 10001 -g agentos -s /bin/bash -m agentos \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
