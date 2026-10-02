@@ -72,9 +72,14 @@ AgentOS is built upon ten non-negotiable operational invariants:
 ├── Dockerfile                    # Multi-stage hardened runner (UID 10001)
 ├── docker-compose.yml            # Local rootless container orchestration
 ├── AGENTOS_SPEC_REVIEW_FOR_CHATGPT.md # Full peer review dossier for ChatGPT
+├── argocd/                       # ArgoCD GitOps root manifests
+│   ├── appproject.yaml           # Isolated AppProject with resource whitelisting
+│   └── application.yaml          # Automated continuous sync Application
 ├── k8s/                          # Production Kubernetes manifests
-│   ├── namespace.yaml
-│   ├── pvc.yaml
+│   ├── kustomization.yaml        # Kustomize manifest bundle & image tags
+│   ├── namespace.yaml            # Restricted Pod Security Standard
+│   ├── rbac.yaml                 # Least privilege ServiceAccount & Role (zero wildcards)
+│   ├── pvc.yaml                  # Persistent volumes for state and workspace
 │   ├── deployment.yaml           # Read-only rootfs, non-root, drop ALL caps
 │   ├── service.yaml              # ClusterIP on probe port 8000
 │   ├── network-policy.yaml       # Default-deny egress network policy
@@ -101,6 +106,47 @@ AgentOS is built upon ten non-negotiable operational invariants:
 - API-server and node TLS, secret encryption at rest, trusted API access ranges, and cloud workload identity are cluster-level settings and must be configured by the cluster operator.
 - The deployment image is a local scaffold reference. Production releases should publish and deploy the scanned registry image by immutable digest.
 - HPA is configured for pod scaling. Node autoscaling, descheduling, spot or ARM placement, and namespace cost reporting depend on the target cluster; use VPA in recommendation mode unless its request changes are coordinated with HPA.
+
+---
+
+## ArgoCD GitOps Deployment (Production Finale)
+
+AgentOS provides native declarative GitOps manifests engineered for continuous delivery and automatic self-healing via **ArgoCD**.
+
+### Architecture & Security Enforcement
+- **AppProject Boundary (`argocd/appproject.yaml`)**:
+  - Restricts deployments exclusively to the `agentos` target namespace.
+  - Whitelists only safe, required resource kinds (`Deployment`, `HorizontalPodAutoscaler`, `NetworkPolicy`, `PersistentVolumeClaim`, `Service`, `ServiceAccount`, `Role`, `RoleBinding`).
+  - Blacklists cluster-scoped privileged entities (`ClusterRole`, `ClusterRoleBinding`).
+- **Application Continuous Delivery (`argocd/application.yaml`)**:
+  - Tracks the `main` branch of `https://github.com/Korisipati-Charan/Agent-OS.git` at path `k8s`.
+  - Enables automated synchronization with `prune: true`, `selfHeal: true`, and `CreateNamespace=true`.
+  - Configures exponential backoff retry policies for zero-downtime rolling updates.
+- **Kustomize Orchestration (`k8s/kustomization.yaml`)**:
+  - Declaratively bundles namespaces, least-privilege RBAC, storage volumes, deployments, ClusterIP services, autoscalers, and ingress/egress network policies.
+  - Enforces container image pinning: `ghcr.io/korisipati-charan/agentos:3.0.1`.
+
+### Deploying with ArgoCD
+
+1. **Verify or Render Local Kustomize Manifests**:
+   ```bash
+   kubectl kustomize k8s/
+   ```
+
+2. **Apply the Project and Application to your ArgoCD Control Plane**:
+   ```bash
+   kubectl apply -f argocd/appproject.yaml
+   kubectl apply -f argocd/application.yaml
+   ```
+
+3. **Check Synchronization & Pod Health via ArgoCD CLI or Web UI**:
+   ```bash
+   argocd app get agentos-production
+   argocd app sync agentos-production
+   kubectl get pods -n agentos -l app.kubernetes.io/name=agentos
+   ```
+
+---
 
 ## Agent skills
 

@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: agentos-project
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: agentos
+    app.kubernetes.io/part-of: agentos
+    app.kubernetes.io/managed-by: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: "Production Project for AgentOS Autonomous Multi-Agent Runtime"
+  
+  sourceRepos:
+    - "https://github.com/Korisipati-Charan/Agent-OS.git"
+    
+  destinations:
+    - namespace: "agentos"
+      server: "https://kubernetes.default.svc"
+    - namespace: "default"
+      server: "https://kubernetes.default.svc"
+
+  clusterResourceWhitelist:
+    - group: ""
+      kind: "Namespace"
+
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: "ServiceAccount"
+    - group: ""
+      kind: "Service"
+    - group: ""
+      kind: "PersistentVolumeClaim"
+    - group: "apps"
+      kind: "Deployment"
+    - group: "autoscaling"
+      kind: "HorizontalPodAutoscaler"
+    - group: "networking.k8s.io"
+      kind: "NetworkPolicy"
+    - group: "rbac.authorization.k8s.io"
+      kind: "Role"
+    - group: "rbac.authorization.k8s.io"
+      kind: "RoleBinding"
+
+  clusterResourceBlacklist:
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRole"
+    - group: "rbac.authorization.k8s.io"
+      kind: "ClusterRoleBinding"

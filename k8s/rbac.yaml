@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: agentos-service-account
+  namespace: agentos
+  labels:
+    app.kubernetes.io/name: agentos
+    app.kubernetes.io/component: supervisor
+automountServiceAccountToken: false
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: agentos-supervisor-role
+  namespace: agentos
+  labels:
+    app.kubernetes.io/name: agentos
+    app.kubernetes.io/component: supervisor
+rules:
+  # Strictly scoped, least privilege permissions without wildcard (*) access
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["events"]
+    verbs: ["create", "patch"]
+  - apiGroups: ["coordination.k8s.io"]
+    resources: ["leases"]
+    verbs: ["get", "list", "watch", "create", "update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: agentos-supervisor-rolebinding
+  namespace: agentos
+  labels:
+    app.kubernetes.io/name: agentos
+    app.kubernetes.io/component: supervisor
+subjects:
+  - kind: ServiceAccount
+    name: agentos-service-account
+    namespace: agentos
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: agentos-supervisor-role
