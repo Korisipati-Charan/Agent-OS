@@ -169,7 +169,10 @@ For a zero-dependency, zero-install operator experience on Windows 11:
     dist\AgentOS.exe info                  :: Inspects platform supervisor boundaries
     dist\AgentOS.exe audit verify          :: Cryptographically validates SHA-256 ledger
     ```
-- **Zero-Error Rebuild**: Run [`build_exe.bat`](build_exe.bat) to reproducibly package `AgentOS.exe` from source with all assets and specs bundled.
+- **Zero-Error Rebuild & Safe Signing**: Run [`build_exe.bat`](build_exe.bat) to reproducibly package `AgentOS.exe` from source with all assets and specs bundled.
+  - *Non-Damaging Safe Mode*: If no enterprise certificate is provided in `AGENTOS_SIGN_CERT`, the build safely completes without touching system certificate stores.
+  - *Enterprise Authenticode*: When an enterprise `.pfx` certificate is provided, signs the binary with RFC 3161 timestamps via Windows SDK `signtool.exe`.
+- **Automated GitHub Releases**: Every published release and version tag automatically triggers [`.github/workflows/release-binaries.yml`](.github/workflows/release-binaries.yml) to build, hash, and publish `AgentOS.exe` and `AgentOS.exe.sha256` directly to GitHub Releases.
 
 ### 1. Installation from Source
 

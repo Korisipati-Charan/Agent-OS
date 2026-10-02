@@ -11,19 +11,24 @@ if not exist ".venv\Scripts\python.exe" (
     exit /b 1
 )
 
-echo [1/2] Verifying build prerequisites...
+echo [1/3] Verifying build prerequisites...
 .\.venv\Scripts\python.exe -m pip install --quiet pyinstaller
 
-echo [2/2] Running PyInstaller build (AgentOS.spec)...
+echo [2/3] Running PyInstaller build (AgentOS.spec)...
 .\.venv\Scripts\python.exe -m PyInstaller --clean AgentOS.spec
 
-if %ERRORLEVEL% equ 0 (
-    echo.
-    echo ===================================================
-    echo   Build Succeeded: dist\AgentOS.exe
-    echo ===================================================
-) else (
+if %ERRORLEVEL% neq 0 (
     echo.
     echo [AgentOS Error] Build failed with error code %ERRORLEVEL%.
+    exit /b %ERRORLEVEL%
 )
+
+echo.
+echo [3/3] Safe Authenticode Code-Signing verification...
+.\.venv\Scripts\python.exe -m agentos.security.code_signing dist\AgentOS.exe
+
+echo.
+echo ===================================================
+echo   Build Succeeded: dist\AgentOS.exe
+echo ===================================================
 endlocal
