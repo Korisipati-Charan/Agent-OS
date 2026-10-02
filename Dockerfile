@@ -1,33 +1,32 @@
 # Multi-stage security-hardened Dockerfile for AgentOS
-FROM python:3.11-slim-bookworm AS builder
+FROM python:3.11.17-slim-trixie AS builder
 
 WORKDIR /build
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
-    && apt-get install -y --no-install-recommends \
-        build-essential \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml .
-RUN pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir .
+COPY README.md .
+COPY agentos ./agentos
+RUN python -m pip install --no-cache-dir --upgrade pip setuptools wheel \
+    && python -m pip install --no-cache-dir --prefix=/install .
 
 # Production Runner Stage
-FROM python:3.11-slim-bookworm AS runner
+FROM python:3.11.17-slim-trixie AS runner
 
-# Security: Non-root user with explicit UID/GID
-RUN apt-get update && apt-get upgrade -y --no-install-recommends \
-    && groupadd -g 10001 agentos \
-    && useradd -u 10001 -g agentos -s /bin/bash -m agentos \
-    && rm -rf /var/lib/apt/lists/*
+# Apply Debian security updates and remove build-time Python package tooling.
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && python -m pip uninstall --yes pip setuptools wheel \
+    && rm -rf /var/lib/apt/lists/* \
+    && groupadd -g 10001 agentos && \
+    useradd -u 10001 -g agentos -s /bin/bash -m agentos
 
 WORKDIR /app
 
-# Copy installed Python packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
-
-# Copy application code
-COPY agentos /app/agentos
+# Copy only the application and declared runtime dependencies.
+COPY --from=builder /install /usr/local
 COPY agentos.yaml /app/agentos.yaml
 
 # Create necessary mount points with proper permissions
